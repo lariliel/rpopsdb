@@ -50,18 +50,19 @@ die "Can't execute iconv [$c{'iconv'}]\n" unless (-x $c{'iconv'});
 
 if (defined($c{'help'})) {
 	print "Usage: $0 opts\n";
-	print "-d /path/to/russianpost/files/ .. [$c{'dir'}]\n";
-	print "-t /path/to/tmp/folder/ ......... [$c{'tmp'}]\n";
-	print "-m output method: xml/json/html . [$c{'method'}]\n";
-	print "-o output folder: ............... [$c{'output'}]\n";
-	print "-u /path/to/unzip: .............. [$c{'unzip'}]\n";
-	print "-i /path/to/iconv: .............. [$c{'iconv'}]\n";
+	print "-d /path/to/russianpost/files/ ....... [$c{'dir'}]\n";
+	print "-t /path/to/tmp/folder/ .............. [$c{'tmp'}]\n";
+	print "-m output method: xml/json/html/dump . [$c{'method'}]\n";
+	print "-o /path/to/output/folder: ........... [$c{'output'}]\n";
+	print "-u /path/to/unzip: ................... [$c{'unzip'}]\n";
+	print "-i /path/to/iconv: ................... [$c{'iconv'}]\n";
 	print "-? this message\n";
 	print "-q quit before work\n";
 	print "--debug\n";
 	print "\n\nmailto:ddsh\@ddsh.ru\n";
 	print "github:https://github.com/lariliel/rpopsdb/\n";
 	print "RussianPost DOCS: http://info.russianpost.ru/database/ops.html\n";
+	print "v0.1\n";
 }
 die "Died by --quit|q passed\n" if defined $c{'quit'};
 
@@ -82,7 +83,7 @@ unless (-d $c{'output'}) {
 # Начало работы со списком файлов
 while(<$c{'dir'}/*.zip>){ # Извлечение архивов в $c{tmp}
 	`$c{'unzip'} $_ -d $c{'tmp'}`;
-	print "$c{'unzip'} $_ -d $c{'tmp'}\n";
+	print "$c{'unzip'} $_ -d $c{'tmp'}\n" if $c{'debug'};
 }
 
 my %count; # Хеш количеств строк.
