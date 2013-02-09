@@ -13,11 +13,13 @@ use Data::Dumper;
 use XML::Simple qw(:strict); # Вывод в XML
 use JSON; # Вывод в JSON
 
-my %c; # Хеш с настройками
+use POSIX;
+
+our %c; # Хеш с настройками
 
 # Получение данных из командной строки
 GetOptions(\%c,'help|?|h','dir|d=s','tmp|t=s','method|m=s',
-	'output|o=s','quit|q','debug','unzip|u=s','iconv|i');
+	'output|o=s','quit|q','debug','unzip|u=s','iconv|i=s','name|n=s');
 
 if (defined $c{'dir'}) {
 	$c{'dir'} = Cwd::abs_path($c{'dir'});
@@ -31,9 +33,7 @@ if (defined $c{'tmp'}) {
 	$c{'tmp'} = $c{'dir'}.'/'.$c{'time'};
 }
 
-$c{'method'} = 'xml' unless (defined $c{'method'} 
-	and ($c{'method'} eq 'xml' or $c{'method'} eq 'json' or 
-		$c{'method'} eq 'html' or $c{'method'} eq 'dump'));
+$c{'method'} = 'xml' unless (defined $c{'method'} and $c{'method'} =~ m/xml|json|html|dump|all/);
 
 if (!defined $c{'output'}) {
 	$c{'output'} = $c{'tmp'}.'/'.$c{'method'};
@@ -41,30 +41,37 @@ if (!defined $c{'output'}) {
 	$c{'output'} = Cwd::abs_path($c{'output'});
 }
 $c{'debug'} = 0 unless defined $c{'debug'};
-$c{'unzip'} = '/usr/bin/unzip' unless defined $c{'unzip'};
-$c{'iconv'} = '/usr/bin/iconv' unless defined $c{'iconv'};
-$c{'time'} = time();
+$c{'unzip'} = `/usr/bin/whereis unzip` unless defined $c{'unzip'};
+$c{'iconv'} = `/usr/bin/whereis iconv` unless defined $c{'iconv'};
+
+$c{'unzip'} =~ s/^\s+|\s+$//g;
+$c{'iconv'} =~ s/^\s+|\s+$//g;
+
+$c{'time'} = localtime();
+
+$c{'name'} = $c{'time'} unless defined $c{'name'};
 
 die "Can't execute unzip [$c{'unzip'}]\n" unless (-x $c{'unzip'});
 die "Can't execute iconv [$c{'iconv'}]\n" unless (-x $c{'iconv'});
 
 if (defined($c{'help'})) {
 	print "Usage: $0 opts\n";
-	print "-d /path/to/russianpost/files/ ....... [$c{'dir'}]\n";
-	print "-t /path/to/tmp/folder/ .............. [$c{'tmp'}]\n";
-	print "-m output method: xml/json/html/dump . [$c{'method'}]\n";
-	print "-o /path/to/output/folder: ........... [$c{'output'}]\n";
-	print "-u /path/to/unzip: ................... [$c{'unzip'}]\n";
-	print "-i /path/to/iconv: ................... [$c{'iconv'}]\n";
+	print "-d /path/to/russianpost/stable/files/ .. [$c{'dir'}]\n";
+	print "-t /path/to/tmp/folder/ ................ [$c{'tmp'}]\n";
+	print "-m output method: xml/json/html/dump/all [$c{'method'}]\n";
+	print "-o /path/to/output/folder: ............. [$c{'output'}]\n";
+	print "-u /path/to/unzip: ..................... [$c{'unzip'}]\n";
+	print "-i /path/to/iconv: ..................... [$c{'iconv'}]\n";
+	print "-n name for this export ................ [$c{'name'}]\n";
 	print "-? this message\n";
 	print "-q quit before work\n";
 	print "--debug\n";
 	print "\n\nmailto:ddsh\@ddsh.ru\n";
 	print "github:https://github.com/lariliel/rpopsdb/\n";
 	print "RussianPost DOCS: http://info.russianpost.ru/database/ops.html\n";
-	print "v0.1\n";
+	print "v0.1.1\n";
 }
-die "Died by --quit|q passed\n" if defined $c{'quit'};
+die "Died by --quit|-q passed\n" if defined $c{'quit'};
 
 print "Start with output folder [$c{'output'}] at [$c{'time'}]\n"  if $c{'debug'};
 
@@ -115,6 +122,8 @@ while (<$c{'tmp'}/PInd*.DBF>) { # Обработка файлов базы по�
         $i{$Index}{'RESTRICTIONSN'} = 0;
         $count{'INDEX'}++;
 	}
+	unlink $_;
+	print " delete [$_] from tmp... " if $c{'debug'};
 }
 print "$count{'INDEX'} lines.\n" if $c{'debug'};
 
@@ -150,6 +159,8 @@ while (<$c{'tmp'}/Dlv*.DBF>) { # добавляем ограничения на 
         $count{'DLV'}++;
         $i{$Index}{'RESTRICTIONSN'}++;
 	}
+	unlink $_;
+	print " delete [$_] from tmp... " if $c{'debug'};
 }
 print "$count{'DLV'} lines.\n" if $c{'debug'};
 
@@ -162,19 +173,40 @@ while (<$c{'tmp'}/RZ*.DBF>) { # Добавляем тарифные зоны htt
         $i{$Index}{'RZRateZone'} = $RateZone || " ";
 		$count{'RZ'}++;
 	}
+	unlink $_;
+	print " delete [$_] from tmp... " if $c{'debug'};
 }
 print "$count{'RZ'} lines.\n" if $c{'debug'};
 
+# Выводит данные в файл
+# Принимает данные и расширение для файла
+sub fprint {
+	my $fdata = shift; # Данные
+	my $fend = shift; # Расширение
+
+	my $fout = $c{'output'}.'/'.$c{'name'}.'.'.$fend;
+
+	open my $fp, '>', $fout.'.tmp' || die "Can't open [$fout] for write!";
+
+	print $fp $fdata;
+
+	`$c{'iconv'} -f CP866 -t UTF-8 $fout.'tmp' > $fout`;
+	unlink($fout.'.tmp');
+
+	print "Done in [$fout]!\n" if $c{'debug'};
+}
+
 # Переходим к формированию файлов вывода:
 my $output = "NONE";
-my $fout = $c{'output'}.'/'.$c{'time'}.'.'.$c{'method'};
-if ($c{'method'} eq 'xml') {
+if ($c{'method'} =~ m/xml|all/) {
 	$output = XMLout(\%i, KeyAttr => "Index");
+	fprint($output,'xml');
 }
-if ($c{'method'} eq 'json') {
+if ($c{'method'} =~ m/json|all/) {
 	$output = to_json(\%i);
+	fprint($output,'json');
 }
-if ($c{'method'} eq 'html') {
+if ($c{'method'} =~ m/html|all/) {
 	$output = <<"EOT";
 	<html>
 		<head>
@@ -223,17 +255,12 @@ EOT
 	<a href="https://github.com/lariliel/rpopsdb/">project on GitHub</a>.
 	</body></html>
 EOT
+	fprint($output,'html');
 }
 
-if ($c{'method'} eq 'dump') {
+if ($c{'method'} =~ m/dump|all/) {
 	$output = Dumper(%i);
+	fprint($output,'dump');
 }
 
-open my $fp, '>', $fout.'.tmp' || die "Can't open $fout for write!";
 
-print $fp $output;
-
-`$c{'iconv'} -f CP866 -t UTF-8 $fout.'tmp' > $fout`;
-unlink($fout.'.tmp');
-
-print "Done!\n" if $c{'debug'};
