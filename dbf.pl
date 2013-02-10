@@ -30,7 +30,7 @@ if (defined $c{'dir'}) {
 if (defined $c{'tmp'}) {
 	$c{'tmp'} = Cwd::abs_path($c{'tmp'});
 } else {
-	$c{'tmp'} = $c{'dir'}.'/'.$c{'time'};
+	$c{'tmp'} = $c{'dir'}.'/tmp';
 }
 
 $c{'method'} = 'xml' unless (defined $c{'method'} and $c{'method'} =~ m/xml|json|html|dump|all/);
@@ -56,21 +56,22 @@ die "Can't execute iconv [$c{'iconv'}]\n" unless (-x $c{'iconv'});
 
 if (defined($c{'help'})) {
 	print "Usage: $0 opts\n";
-	print "-d /path/to/russianpost/stable/files/ .. [$c{'dir'}]\n";
-	print "-t /path/to/tmp/folder/ ................ [$c{'tmp'}]\n";
-	print "-m output method: xml/json/html/dump/all [$c{'method'}]\n";
-	print "-o /path/to/output/folder: ............. [$c{'output'}]\n";
-	print "-u /path/to/unzip: ..................... [$c{'unzip'}]\n";
-	print "-i /path/to/iconv: ..................... [$c{'iconv'}]\n";
-	print "-n name for this export ................ [$c{'name'}]\n";
-	print "-? this message\n";
-	print "-q quit before work\n";
+	print "-d[ir] .. /path/to/russianpost/stable/files/ .. [$c{'dir'}]\n";
+	print "-t[mp] .. /path/to/tmp/folder/ ................ [$c{'tmp'}]\n";
+	print "-m[ethod] output method: xml/json/html/dump/all [$c{'method'}]\n";
+	print "-o[utput] /path/to/output/folder: ............. [$c{'output'}]\n";
+	print "-u[nzip]  /path/to/unzip: ..................... [$c{'unzip'}]\n";
+	print "-i[conv]  /path/to/iconv: ..................... [$c{'iconv'}]\n";
+	print "-n[ame] . name for this export: ............... [$c{'name'}]\n";
+	print "-h[elp|?] this message\n";
+	print "-q[uit] . quit before work\n";
 	print "--debug\n";
 	print "\n\nmailto:ddsh\@ddsh.ru\n";
 	print "github:https://github.com/lariliel/rpopsdb/\n";
-	print "RussianPost DOCS: http://info.russianpost.ru/database/ops.html\n";
+	print "RussianPost DOCS: http://info.russianpost.ru/database/ops.html http://info.russianpost.ru/database/dlimits.html http://info.russianpost.ru/database/tzones.html\n";
 	print "v0.1.1\n";
 }
+
 die "Died by --quit|-q passed\n" if defined $c{'quit'};
 
 print "Start with output folder [$c{'output'}] at [$c{'time'}]\n"  if $c{'debug'};
@@ -190,7 +191,8 @@ sub fprint {
 
 	print $fp $fdata;
 
-	`$c{'iconv'} -f CP866 -t UTF-8 $fout.'tmp' > $fout`;
+	`$c{'iconv'} -f CP866 -t UTF-8 '$fout.tmp' > '$fout'`;
+	print "$c{'iconv'} -f CP866 -t UTF-8 '$fout.tmp' > '$fout'\n" if $c{'debug'};
 	unlink($fout.'.tmp');
 
 	print "Done in [$fout]!\n" if $c{'debug'};
@@ -259,7 +261,7 @@ EOT
 }
 
 if ($c{'method'} =~ m/dump|all/) {
-	$output = Dumper(%i);
+	$output = Dumper({%i});
 	fprint($output,'dump');
 }
 
