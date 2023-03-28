@@ -66,7 +66,7 @@ if (defined($c{'help'})) {
 	print "-h[elp|?] this message\n";
 	print "-q[uit] . quit before work\n";
 	print "--debug\n";
-	print "\n\nmailto:ddsh\@ddsh.ru\n";
+	print "\n\nmailto:me@lari-shirokova.ru\n";
 	print "github:https://github.com/lariliel/rpopsdb/\n";
 	print "RussianPost DOCS: http://info.russianpost.ru/database/ops.html http://info.russianpost.ru/database/dlimits.html http://info.russianpost.ru/database/tzones.html\n";
 	print "v0.1.1\n";
